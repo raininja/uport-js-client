@@ -14,7 +14,10 @@ const ethutil = require('ethereumjs-util')
 const base58 = require('bs58')
 const decodeEvent = require('ethjs-abi').decodeEvent
 const SecureRandom = require('secure-random')
-const IPFS = require('ipfs-mini');
+// TODO return to smaller lib
+// const IPFS = require('ipfs-mini');
+const IPFS = require('ipfs-api')
+const isIPFS = require('is-ipfs')
 const EthSigner = require('eth-signer')
 const SimpleSigner = EthSigner.signers.SimpleSigner
 const IMProxySigner = EthSigner.signers.IMProxySigner
@@ -257,15 +260,33 @@ class UPortClient {
      this.transactionSigner = new IMProxySigner(this.id, this.simpleSigner, IdentityManagerAdress)
   }
 
-  appDDO(name, description, url, imgPath) {
-      // TODO consume both path and buffer, error handle invalid path
+  appDDO(name, description, url, img) {
     return new Promise((resolve, reject) => {
       const DDO =  { '@type': 'App' }
       if (name) DDO.name = name
       if (description) DDO.description = description
       if (url) DDO.url = url
-      if (imgPath) DDO.image = { contentUrl: imgPath }
-      resolve(DDO)
+      if (img) {
+        if (isIPFS.cid(img)) {
+          DDO.image = { contentUrl: `/ipfs/${img}` }
+          resolve(DDO)
+        } else if (isIPFS.path(img)) {
+          DDO.image = { contentUrl: img }
+          resolve(DDO)
+        } else {
+          fs.readFile(imgPath, (err, data) => {
+            if (err) reject(new Error(err))
+            this.ipfs.files.add(data, (err, result) => {
+              if (err) reject(new Error(err))
+              const imgHash = result[0].hash
+              DDO.image = { contentUrl: `/ipfs/${imgHash}` }
+              resolve(DDO)
+            })
+          })
+        }
+      } else {
+        resolve(DDO)
+      }
     })
   }
 
@@ -331,12 +352,13 @@ class UPortClient {
    return this.getDDO().then(ddo => {
       ddo = Object.assign(ddo || {}, newDdo)
       return new Promise((resolve, reject) => {
-        this.ipfs.addJSON(ddo, (err, result) => {
+        this.ipfs.add(Buffer.from(JSON.stringify(ddo)), (err, result) => {
             if (err) reject(new Error(err))
             resolve(result)
         })
       })
-    }).then(hash => {
+    }).then(res => {
+      const hash = res[0].hash
       const hexhash = new Buffer(base58.decode(hash)).toString('hex')
       // removes Qm from ipfs hash, which specifies length and hash
       const hashArg = `0x${hexhash.slice(4)}`
