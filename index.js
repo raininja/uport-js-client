@@ -111,7 +111,6 @@ const serialize = (uportClient) => {
   const jsonClientState = {
     id: uportClient.id,
     network: uportClient.network,
-    nonce: uportClient.nonce,
     info: uportClient.info,
     credentials: uportClient.credentials,
     ipfsConfig: uportClient.ipfsUrl,
@@ -197,8 +196,6 @@ const isAddAttestationRequest = (uri) => !!uri.match(/add\?/g)
 
 class UPortClient {
   constructor(config = {}, initState = {}) {
-    // TODO handle nonce better
-    this.nonce = config.nonce || 0
     // Handle this differently once there is a test and full client
     this.responseHandler = configResponseHandler(config.responseHandler)
     // {key: value, ...}
@@ -410,28 +407,30 @@ class UPortClient {
     const to = uri.match(/0[xX][0-9a-fA-F]+/g)[0]
     const from = this.deviceKeys.address
     const data = params.bytecode || params.function ?  funcToData(params.function) : '0x' //TODO whats the proper null value?
-    const nonce = this.nonce++
     const value = params.value || 0
     const gas = params.gas ? params.gas : 6000000
     // TODO good default or opts
     const gasPrice = 3000000
-    const txObj = {to, value: new BN(value), data, gas, gasPrice, nonce, from}
-    const tx = new Transaction(txObj)
 
-    const unsignedRawTx = util.bufferToHex(tx.serialize())
-    tx.sign(new Buffer(this.deviceKeys.privateKey.slice(2), 'hex')) // TODO remove redundant, get hash from above
+    return this.ethjs.getTransactionCount(this.deviceKeys.address, 'pending').then(nonce => {
+      const txObj = {to, value: new BN(value), data, gas, gasPrice, nonce, from}
+      const tx = new Transaction(txObj)
 
-    if (this.ethjs) {
-      return this.signRawTx(unsignedRawTx)
-                 .then(rawTx => {
-                   return this.ethjs.sendRawTransaction(rawTx)
-                 }).then(txHash => {
-                   return this.responseHandler(txHash, params.callback_url)
-                 })
-    } else {
-      const txHash = util.bufferToHex(tx.hash(true))
-      return this.responseHandler(txHash, params.callback_url)
-    }
+      const unsignedRawTx = util.bufferToHex(tx.serialize())
+      tx.sign(new Buffer(this.deviceKeys.privateKey.slice(2), 'hex')) // TODO remove redundant, get hash from above
+
+      if (this.ethjs) {
+        return this.signRawTx(unsignedRawTx)
+                   .then(rawTx => {
+                     return this.ethjs.sendRawTransaction(rawTx)
+                   }).then(txHash => {
+                     return this.responseHandler(txHash, params.callback_url)
+                   })
+      } else {
+        const txHash = util.bufferToHex(tx.hash(true))
+        return this.responseHandler(txHash, params.callback_url)
+      }
+    })
   }
 
   addAttestationRequestHandler(uri) {
