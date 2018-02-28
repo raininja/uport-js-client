@@ -264,19 +264,8 @@ class UPortClient {
       if (name) DDO.name = name
       if (description) DDO.description = description
       if (url) DDO.url = url
-      if (imgPath) {
-        fs.readFile(imgPath, (err, data) => {
-          if (err) reject(new Error(err))
-          this.ipfs.add(data, (err, result) => {
-            if (err) reject(new Error(err))
-            const imgHash = result
-            DDO.image = { contentUrl: `/ipfs/${imgHash}` }
-            resolve(DDO)
-          })
-        })
-      } else {
-        resolve(DDO)
-      }
+      if (imgPath) DDO.image = { contentUrl: imgPath }
+      resolve(DDO)
     })
   }
 
