@@ -24,7 +24,7 @@ const deploy = (network, {from, gas, gasPrice, IdentityManagerArgs = {}} = {}, p
 
   Registry.setProvider(provider)
   IdentityManager.setProvider(provider)
-  const eth = new EthJS(new HttpProvider(network))
+  const eth = new EthJS(provider)
 
   const userTimeLock = IdentityManagerArgs.userTimeLock || 50
   const adminTimeLock = IdentityManagerArgs.adminTimeLock || 200
@@ -45,7 +45,7 @@ const deploy = (network, {from, gas, gasPrice, IdentityManagerArgs = {}} = {}, p
   }).then(instance => {
     resObj.IdentityManager = instance.address
     return resObj
-  })
+  }).catch(console.log)
 }
 
 module.exports = deploy
