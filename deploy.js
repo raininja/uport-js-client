@@ -30,18 +30,20 @@ const deploy = (network, {from, gas, gasPrice, IdentityManagerArgs = {}} = {}, p
   const adminTimeLock = IdentityManagerArgs.adminTimeLock || 200
   const adminRate = IdentityManagerArgs.adminRate || 50
   gas = gas || 3000000
-  gasPrice = gasPrice || 20000000000
 
   let resObj = {}
   let address
 
   return eth.coinbase().then(res => {
     from = from || res
+    return gasPrice ?  gasPrice : eth.gasPrice()
+  }).then(res => {
+    gasPrice = res
     const fakePrevVersion = 0 // Registry contract constructor expects a previous version
-    return Registry.new(fakePrevVersion, {from, gas: 3000000, gasPrice: 20000000000})
+    return Registry.new(fakePrevVersion, {from, gas})
   }).then(instance => {
     resObj.Registry = instance.address
-    return IdentityManager.new(userTimeLock, adminTimeLock, adminRate, {from, gas: 3000000, gasPrice: 20000000000})
+    return IdentityManager.new(userTimeLock, adminTimeLock, adminRate, {from, gas})
   }).then(instance => {
     resObj.IdentityManager = instance.address
     return resObj
