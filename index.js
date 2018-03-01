@@ -408,29 +408,38 @@ class UPortClient {
     const from = this.deviceKeys.address
     const data = params.bytecode || params.function ?  funcToData(params.function) : '0x' //TODO whats the proper null value?
     const value = params.value || 0
-    const gas = params.gas ? params.gas : 6000000
-    // TODO good default or opts
-    const gasPrice = 3000000
 
-    return this.ethjs.getTransactionCount(this.deviceKeys.address, 'pending').then(nonce => {
-      const txObj = {to, value: new BN(value), data, gas, gasPrice, nonce, from}
-      const tx = new Transaction(txObj)
+    let nonce, gasPrice, gas, txObj
 
-      const unsignedRawTx = util.bufferToHex(tx.serialize())
-      tx.sign(new Buffer(this.deviceKeys.privateKey.slice(2), 'hex')) // TODO remove redundant, get hash from above
+    return this.ethjs.getTransactionCount(this.deviceKeys.address, 'pending')
+      .then(res => {
+        nonce = res
+        return params.gasPrice ?  params.gasPrice : this.ethjs.gasPrice()
+      }).then(res => {
+        gasPrice = res
+        txObj = {to, value: new BN(value), data, gas, nonce, from}
+        // TODO estimateGas
+        // return this.ethjs.estimateGas(...)
+        return params.gas ? params.gas : 3000000
+      }).then(res => {
+        txObj.gas = res
+        const tx = new Transaction(txObj)
 
-      if (this.ethjs) {
-        return this.signRawTx(unsignedRawTx)
-                   .then(rawTx => {
-                     return this.ethjs.sendRawTransaction(rawTx)
-                   }).then(txHash => {
-                     return this.responseHandler(txHash, params.callback_url)
-                   })
-      } else {
-        const txHash = util.bufferToHex(tx.hash(true))
-        return this.responseHandler(txHash, params.callback_url)
-      }
-    })
+        const unsignedRawTx = util.bufferToHex(tx.serialize())
+        tx.sign(new Buffer(this.deviceKeys.privateKey.slice(2), 'hex')) // TODO remove redundant, get hash from above
+
+        if (this.ethjs) {
+          return this.signRawTx(unsignedRawTx)
+                     .then(rawTx => {
+                       return this.ethjs.sendRawTransaction(rawTx)
+                     }).then(txHash => {
+                       return this.responseHandler(txHash, params.callback_url)
+                     })
+        } else {
+          const txHash = util.bufferToHex(tx.hash(true))
+          return this.responseHandler(txHash, params.callback_url)
+        }
+      })
   }
 
   addAttestationRequestHandler(uri) {
