@@ -12,7 +12,7 @@ let address
 const createuPortClient = () => {
   return deploy(rpcUrl)
     .then(res => {
-      const config = { network: { id: '5777', rpcUrl, registry: res.Registry, identityManager: res.IdentityManager } }
+      const config = { network: { id: '0x5777', rpcUrl, registry: res.Registry, identityManager: res.IdentityManager } }
       uportClient = new UPortClient(config)
       uportClient.initKeys()
       return eth.coinbase()
@@ -20,7 +20,7 @@ const createuPortClient = () => {
       // Fund device key Transaction
       address = addr
       const fundTx = { to: uportClient.deviceKeys.address,
-                       value: 2 * 1.0e18,
+                       value: 0.02 * 1.0e18,
                        from: address,
                        data: '0x' }
       return eth.sendTransaction(fundTx)
@@ -44,12 +44,13 @@ createuPortClient().then(client => {
   console.log(client)
   // Create a request
   // const uri =
-  const fundTx = { to: client.id, value: 1 * 1.0e18, from: address, data: '0x' }
+  const value =  0.01 * 1.0e18
+  const fundTx = { to: client.id, value, from: address, data: '0x' }
   return eth.sendTransaction(fundTx)
     .then(txHash => {
       console.log(txHash)
       console.log('Funded proxy')
-      const uri = 'me.uport:0xf17f52151EbEF6C7334FAD080c5704D77216b732?value=1000000000000000000'
+      const uri = `me.uport:0xf17f52151EbEF6C7334FAD080c5704D77216b732?value=${value}`
       // Send to client
       return client.consume(uri)
     }).then(res => {
