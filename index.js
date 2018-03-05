@@ -116,17 +116,16 @@ const serialize = (uportClient) => {
     ipfsConfig: uportClient.ipfsUrl,
     deviceKeys: uportClient.deviceKeys,
     recoveryKeys: uportClient.recoveryKeys,
-    mnid: uportClient.mnid
+    mnid: uportClient.mnid,
+    initialized: uportClient.initialized
   }
   return JSON.stringify(jsonClientState)
 }
 
 const deserialize = (str) => {
   const jsonClientState = JSON.parse(str)
-  const uportClient = new UPortClient(jsonClientState)
+  const uportClient = new UPortClient(jsonClientState, { credentials: jsonClientState.credentials })
   // Some of uport client could be refactored to handle this through configs, but won't change this interface once changed
-  uportClient.deviceKeys = jsonClientState.deviceKeys
-  uportClient.recoveryKeys = jsonClientState.recoveryKeys
   uportClient.id = jsonClientState.id
   uportClient.mnid = jsonClientState.mnid
   uportClient.initTokenSigner()
@@ -233,6 +232,7 @@ class UPortClient {
       this.registryAddress = this.network.registry
       this.identityManagerAddress = this.network.identityManager
 
+      this.initialized = config.initialized || false
   }
 }
 
@@ -327,6 +327,7 @@ class UPortClient {
             }).then(this.ethjs.getTransactionReceipt.bind(this.ethjs))
             .then(receipt => {
               // .. receipt
+              this.initialized = true
               return
             })
   }
