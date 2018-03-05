@@ -417,24 +417,28 @@ class UPortClient {
         return params.gasPrice ?  params.gasPrice : this.ethjs.gasPrice()
       }).then(res => {
         gasPrice = res
-        txObj = {to, value: new BN(value), data, gas, nonce, from}
-        // TODO estimateGas
-        // return this.ethjs.estimateGas(...)
-        return params.gas ? params.gas : 3000000
-      }).then(res => {
-        txObj.gas = res
+        txObj = {to, value: new BN(value), data, gasPrice, nonce, from, gasLimit: 300000 } // temp gas val
         const tx = new Transaction(txObj)
-
         const unsignedRawTx = util.bufferToHex(tx.serialize())
-        tx.sign(new Buffer(this.deviceKeys.privateKey.slice(2), 'hex')) // TODO remove redundant, get hash from above
+        tx.sign(new Buffer(this.deviceKeys.privateKey.slice(2), 'hex')) // TODO remove redundant, get hash from above, and not actual hash when mocked since not IM
 
         if (this.ethjs) {
           return this.signRawTx(unsignedRawTx)
                      .then(rawTx => {
-                       return this.ethjs.sendRawTransaction(rawTx)
-                     }).then(txHash => {
-                       return this.responseHandler(txHash, params.callback_url)
-                     })
+                        // TODO remove redudant signing to get actuall tx data for gas estimate, doing this for now since tx data changed in eth-signer
+                        const txEstimate = new Transaction(new Buffer(rawTx, 'hex'));
+                        const estimateTxObj = { data: txEstimate.data.toString('hex'), to: txEstimate.to.toString('hex'), from: txEstimate.from.toString('hex') }
+                        return this.ethjs.estimateGas(estimateTxObj)
+                      }).then(res => {
+                        txObj.gasLimit = params.gas ? params.gas : res.mul(new BN(20, 10)).div(new BN(19, 10)) // gas buffer
+                        const txWithGas = new Transaction(txObj)
+                        const unsignedRawTxWithGas = util.bufferToHex(txWithGas.serialize())
+                        return this.signRawTx(unsignedRawTxWithGas)
+                      }).then(rawTx => {
+                        return this.ethjs.sendRawTransaction(rawTx)
+                      }).then(txHash => {
+                        return this.responseHandler(txHash, params.callback_url)
+                      })
         } else {
           const txHash = util.bufferToHex(tx.hash(true))
           return this.responseHandler(txHash, params.callback_url)
