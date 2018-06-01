@@ -29,7 +29,7 @@
     "truffle-contract": "^3.0.1",
     "truffle-hdwallet-provider": "0.0.3",
     "uport": "^0.6.0",
-    "uport-identity": "raininja/uport-identity#develop",
+    "uport-identity": "github:raininja/uport-identity#develop",
     "uport-lite": "^1.0.2",
     "uport-registry": "^5.1.0",
     "urldecode": "^1.0.1",
