@@ -31,7 +31,7 @@
     "uport": "^0.6.0",
     "uport-identity": "github:raininja/uport-identity#fix/update-deps",
     "uport-lite": "^1.0.2",
-    "uport-registry": "^5.1.0",
+    "uport-registry": "github:raininja/uport-registry#fix/build_error",
     "urldecode": "^1.0.1",
     "web3": "^1.0.0-beta.26"
   },
